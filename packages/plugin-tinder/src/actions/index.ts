@@ -1,0 +1,1 @@
+export { tinderLoginAction } from "./login";

@@ -1,0 +1,1 @@
+export { TinderProvider } from "./tinderProvider";

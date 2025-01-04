@@ -48,6 +48,7 @@
     "@elizaos/plugin-node": "workspace:*",
     "@elizaos/plugin-solana": "workspace:*",
     "@elizaos/plugin-starknet": "workspace:*",
+    "@elizaos/plugin-tinder": "workspace:*",
     "@elizaos/plugin-ton": "workspace:*",
     "@elizaos/plugin-sui": "workspace:*",
     "@elizaos/plugin-tee": "workspace:*",
