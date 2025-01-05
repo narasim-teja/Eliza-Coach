@@ -45,7 +45,7 @@ export class TinderProvider implements Provider {
             await this.page.screenshot({ path: "tinder-initial-load.jpg" });
 
             // Handle cookie consent if present
-            const cookieButton = await this.page.getByRole("button", {
+            const cookieButton = this.page.getByRole("button", {
                 name: /I accept|Accept/i,
             });
             if (await cookieButton.isVisible()) {
@@ -57,22 +57,22 @@ export class TinderProvider implements Provider {
             let loginButton;
 
             // Strategy 1: Try direct text match
-            loginButton = await this.page.getByText("Log in", { exact: true });
-            if (!(await loginButton.isVisible())) {
+            loginButton = this.page.getByText("Log in", { exact: true });
+            if (!loginButton.isVisible()) {
                 // Strategy 2: Try button role
-                loginButton = await this.page.getByRole("button", {
+                loginButton = this.page.getByRole("button", {
                     name: "Log in",
                 });
             }
             if (!(await loginButton.isVisible())) {
                 // Strategy 3: Try link role
-                loginButton = await this.page.getByRole("link", {
+                loginButton = this.page.getByRole("link", {
                     name: "Log in",
                 });
             }
             if (!(await loginButton.isVisible())) {
                 // Strategy 4: Try case-insensitive partial match
-                loginButton = await this.page.getByText(/log.?in/i, {
+                loginButton = this.page.getByText(/log.?in/i, {
                     exact: false,
                 });
             }
@@ -124,6 +124,15 @@ export class TinderProvider implements Provider {
             // Wait for the login modal to be visible
             await this.page.waitForTimeout(1000);
 
+            // First check for "More Options" button and click if present
+            const moreOptionsButton = this.page.getByRole("button", {
+                name: /More Options|More ways to log in/i,
+            });
+            if (await moreOptionsButton.isVisible()) {
+                await moreOptionsButton.click();
+                await this.page.waitForTimeout(1000);
+            }
+
             // Click "Log in with phone number" button
             const phoneLoginButton = await this.page.getByRole("button", {
                 name: /Log in with phone number/i,
@@ -135,14 +144,14 @@ export class TinderProvider implements Provider {
             await this.page.waitForTimeout(1000);
 
             // Find phone input field - try multiple strategies
-            let phoneInput = await this.page.getByPlaceholder(/phone number/i);
+            let phoneInput = this.page.getByPlaceholder(/phone number/i);
             if (!(await phoneInput.isVisible())) {
-                phoneInput = await this.page.getByRole("textbox", {
+                phoneInput = this.page.getByRole("textbox", {
                     name: /phone/i,
                 });
             }
             if (!(await phoneInput.isVisible())) {
-                phoneInput = await this.page.locator('input[type="tel"]');
+                phoneInput = this.page.locator('input[type="tel"]');
             }
 
             if (!(await phoneInput.isVisible())) {
@@ -155,7 +164,7 @@ export class TinderProvider implements Provider {
             await this.page.waitForTimeout(500);
 
             // Find and click continue button
-            const continueButton = await this.page.getByRole("button", {
+            const continueButton = this.page.getByRole("button", {
                 name: /Continue|Submit|Next/i,
             });
             if (!(await continueButton.isVisible())) {

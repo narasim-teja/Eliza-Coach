@@ -45,11 +45,12 @@ export class ScreenAnalysisProvider implements Provider {
             const result = await this.model.generateContent({
                 contents: [
                     {
+                        role: "user",
                         parts: [
                             { text: prompt },
                             {
-                                inline_data: {
-                                    mime_type: GEMINI_CONFIG.mimeType,
+                                inlineData: {
+                                    mimeType: GEMINI_CONFIG.mimeType,
                                     data: base64Image,
                                 },
                             },
@@ -59,7 +60,7 @@ export class ScreenAnalysisProvider implements Provider {
             });
 
             // Wait for response
-            const response = await result.response;
+            const response = result.response;
             const text = response.text();
 
             try {
