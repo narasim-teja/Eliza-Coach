@@ -1,5 +1,5 @@
 import { chromium, Browser, Page } from "playwright";
-import { Provider } from "@elizaos/core";
+import { Provider, IAgentRuntime, ICacheManager } from "@elizaos/core";
 import { ScreenAnalysisProvider } from "./screenAnalysisProvider";
 
 export class TinderProvider implements Provider {
@@ -7,6 +7,7 @@ export class TinderProvider implements Provider {
     private browser: Browser | null = null;
     private page: Page | null = null;
     private screenAnalyzer: ScreenAnalysisProvider;
+    private runtime: IAgentRuntime;
 
     private constructor() {
         this.screenAnalyzer = ScreenAnalysisProvider.getInstance();
@@ -23,11 +24,67 @@ export class TinderProvider implements Provider {
         return this.page;
     }
 
+    setRuntime(runtime: IAgentRuntime) {
+        this.runtime = runtime;
+    }
+
+    async getCachedCookies(identifier: string): Promise<any[] | null> {
+        if (!this.runtime?.cacheManager) return null;
+        const cacheManager = this.runtime.cacheManager as ICacheManager;
+        return await cacheManager.get(`tinder/cookies/${identifier}`);
+    }
+
+    async cacheCookies(identifier: string, cookies: any[]): Promise<void> {
+        if (!this.runtime?.cacheManager) return;
+        const cacheManager = this.runtime.cacheManager as ICacheManager;
+        await cacheManager.set(`tinder/cookies/${identifier}`, cookies);
+    }
+
     async init() {
         if (!this.browser) {
-            this.browser = await chromium.launch({ headless: false });
-            this.page = await this.browser.newPage();
+            const context = await chromium.launchPersistentContext(
+                "user-data",
+                {
+                    headless: false,
+                    args: [
+                        "--disable-blink-features=AutomationControlled",
+                        "--disable-features=IsolateOrigins,site-per-process",
+                    ],
+                    userAgent:
+                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                }
+            );
+            this.page = context.pages()[0];
+
+            // Override navigator.webdriver
+            await this.page.addInitScript(() => {
+                Object.defineProperty(navigator, "webdriver", {
+                    get: () => undefined,
+                });
+            });
+
+            // Try to restore cookies if available
+            const phoneNumber = process.env.TINDER_PHONE_NUMBER;
+            if (phoneNumber) {
+                const cookies = await this.getCachedCookies(phoneNumber);
+                if (cookies) {
+                    await this.setCookiesFromArray(cookies);
+                }
+            }
         }
+    }
+
+    private async randomDelay(
+        min: number = 1500,
+        max: number = 3500
+    ): Promise<void> {
+        const delay = Math.floor(Math.random() * (max - min)) + min;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+
+    async setCookiesFromArray(cookiesArray: any[]) {
+        if (!this.page) throw new Error("Browser not initialized");
+        await this.page.context().addCookies(cookiesArray);
     }
 
     async navigateToLogin() {
@@ -122,7 +179,7 @@ export class TinderProvider implements Provider {
 
         try {
             // Wait for the login modal to be visible
-            await this.page.waitForTimeout(1000);
+            await this.randomDelay(2000, 4000);
 
             // First check for "More Options" button and click if present
             const moreOptionsButton = this.page.getByRole("button", {
@@ -130,7 +187,7 @@ export class TinderProvider implements Provider {
             });
             if (await moreOptionsButton.isVisible()) {
                 await moreOptionsButton.click();
-                await this.page.waitForTimeout(1000);
+                await this.randomDelay();
             }
 
             // Click "Log in with phone number" button
@@ -141,7 +198,7 @@ export class TinderProvider implements Provider {
                 throw new Error("Phone login option not found");
             }
             await phoneLoginButton.click();
-            await this.page.waitForTimeout(1000);
+            await this.randomDelay();
 
             // Find phone input field - try multiple strategies
             let phoneInput = this.page.getByPlaceholder(/phone number/i);
@@ -158,10 +215,14 @@ export class TinderProvider implements Provider {
                 throw new Error("Phone input field not found");
             }
 
-            // Enter phone number
+            // Enter phone number with human-like typing
             await phoneInput.click();
-            await phoneInput.fill(phoneNumber);
-            await this.page.waitForTimeout(500);
+            for (const digit of phoneNumber) {
+                await phoneInput.type(digit);
+                await this.randomDelay(100, 300); // Random delay between keystrokes
+            }
+
+            await this.randomDelay();
 
             // Find and click continue button
             const continueButton = this.page.getByRole("button", {
@@ -175,6 +236,10 @@ export class TinderProvider implements Provider {
             // Wait for OTP input (manual entry)
             console.log("Waiting for manual OTP entry (2 minutes)...");
             await this.page.waitForTimeout(120000);
+
+            // After successful login, cache the cookies
+            const cookies = await this.page.context().cookies();
+            await this.cacheCookies(phoneNumber, cookies);
 
             return await this.isLoggedIn();
         } catch (error) {
