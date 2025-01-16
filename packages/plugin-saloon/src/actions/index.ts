@@ -1,0 +1,1 @@
+export { bookSaloonAppointment } from "./bookAppointment";

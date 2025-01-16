@@ -55,6 +55,7 @@ import { nftGenerationPlugin } from "@elizaos/plugin-nft-generation";
 import { createNodePlugin } from "@elizaos/plugin-node";
 import { solanaPlugin } from "@elizaos/plugin-solana";
 import { suiPlugin } from "@elizaos/plugin-sui";
+import { saloonPlugin } from "@elizaos/plugin-saloon";
 import { TEEMode, teePlugin } from "@elizaos/plugin-tee";
 import { tonPlugin } from "@elizaos/plugin-ton";
 import { tinderPlugin } from "@elizaos/plugin-tinder";
@@ -528,6 +529,12 @@ export async function createAgent(
             nodePlugin,
             getSecret(character, "TINDER_PHONE_NUMBER")
                 ? tinderPlugin
+                : null,
+            getSecret(character, "SUPERCUTS_PHONE_NUMBER") &&
+            getSecret(character, "SUPERCUTS_EMAIL") &&
+            getSecret(character, "SUPERCUTS_PASSWORD") &&
+            getSecret(character, "SUPERCUTS_PINCODE")
+                ? saloonPlugin
                 : null,
             getSecret(character, "SOLANA_PUBLIC_KEY") ||
             (getSecret(character, "WALLET_PUBLIC_KEY") &&
